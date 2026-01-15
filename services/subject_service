@@ -1,0 +1,77 @@
+from typing import List, Optional
+from models.subject import Subject
+from models.task import Task
+import json
+from pathlib import Path
+
+DATA_FILE = Path("subjects.json")
+
+class SubjectService:
+    """
+    Handles logic for managing subjects/classes.
+    """
+    def __init__(self):
+        self.subjects: List[Subject] = self.load_subjects()
+
+    def add_subject(self, subject: Subject):
+        """Add a new subject."""
+        self.subjects.append(subject)
+        self.save_subjects()
+
+    def delete_subject(self, subject_name: str):
+        """Delete a subject by name."""
+        self.subjects = [s for s in self.subjects if s.name != subject_name]
+        self.save_subjects()
+
+    def get_subject(self, subject_name: str) -> Optional[Subject]:
+        """Retrieve a subject by name."""
+        for subject in self.subjects:
+            if subject.name == subject_name:
+                return subject
+        return None
+
+    def assign_task_to_subject(self, subject_name: str, task: Task):
+        """Assign an existing task to a subject."""
+        subject = self.get_subject(subject_name)
+        if subject:
+            subject.add_task(task)
+            self.save_subjects()
+
+    def list_subjects(self) -> List[Subject]:
+        """Return all subjects."""
+        return self.subjects
+
+    def save_subjects(self):
+        """Persist subjects to JSON."""
+        data = []
+        for s in self.subjects:
+            data.append({
+                "name": s.name,
+                "teacher": s.teacher,
+                "color": s.color,
+                "tasks": [t.to_dict() for t in s.tasks]
+            })
+
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+
+    def load_subjects(self) -> List[Subject]:
+        """Load subjects from JSON."""
+        if not DATA_FILE.exists():
+            return []
+
+        with open(DATA_FILE, "r") as f:
+            data = json.load(f)
+
+        subjects = []
+        for item in data:
+            subject = Subject(
+                name=item["name"],
+                teacher=item.get("teacher"),
+                color=item.get("color")
+            )
+            for task_data in item.get("tasks", []):
+                subject.add_task(Task.from_dict(task_data))
+            subjects.append(subject)
+
+        return subjects
