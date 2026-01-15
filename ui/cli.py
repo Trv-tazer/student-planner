@@ -93,23 +93,31 @@ class CLI:
     # -------- SUBJECTS --------
 
     def subject_menu(self):
-        print("\n--- SUBJECT MANAGEMENT ---")
-        print("1. Add Subject")
-        print("2. Delete Subject")
-        print("3. List Subjects")
-        print("4. Assign Task to Subject")
-        print("B. Back")
+        while True:
+            print("\n--- SUBJECT MANAGEMENT ---")
+            print("1. Add Subject")
+            print("2. Delete Subject")
+            print("3. List Subjects")
+            print("4. Assign Task to Subject")
+            print("5. List Tasks for Subject")
+            print("B. Back")
 
-        choice = input("Choose an option: ").strip().lower()
+            choice = input("Choose an option: ").strip().lower()
 
-        if choice == "1":
-            self.add_subject()
-        elif choice == "2":
-            self.delete_subject()
-        elif choice == "3":
-            self.list_subjects()
-        elif choice == "4":
-            self.assign_task_to_subject()
+            if choice == "1":
+                self.add_subject()
+            elif choice == "2":
+                self.delete_subject()
+            elif choice == "3":
+                self.list_subjects()
+            elif choice == "4":
+                self.assign_task_to_subject()
+            elif choice == "5":
+                self.list_tasks_for_subject()
+            elif choice == "b":
+                break
+            else:
+                print("Invalid choice.")
 
     def add_subject(self):
         name = input("Subject name: ").strip()
@@ -131,7 +139,9 @@ class CLI:
 
         print("\n--- SUBJECTS ---")
         for s in subjects:
-            print(f"- {s.name} ({len(s.tasks)} tasks)")
+            tasks = self.subject_service.list_tasks_for_subject(s.name, self.task_service.tasks)
+            task_count = len(tasks)
+            print(f"- {s.name} ({task_count} tasks)")
 
     def assign_task_to_subject(self):
         task_title = input("Task title: ").strip()
@@ -142,6 +152,19 @@ class CLI:
             print("Task not found.")
             return
 
-        self.subject_service.assign_task_to_subject(subject_name, task)
+        self.subject_service.assign_task_to_subject(subject_name, task.title)
         print("Task assigned to subject.")
 
+    def list_tasks_for_subject(self):
+        subject_name = input("Subject name: ").strip()
+        tasks = self.subject_service.list_tasks_for_subject(subject_name, self.task_service.tasks)
+
+        if not tasks:
+            print(f"No tasks found for {subject_name}.")
+            return
+
+        print(f"\n--- TASKS FOR {subject_name} ---")
+        for t in tasks:
+            status = "✓" if t.completed else "✗"
+            due = t.due_date.isoformat() if t.due_date else "No due date"
+            print(f"[{status}] {t.title} | {t.priority} | Due: {due}")
