@@ -1,6 +1,7 @@
 from typing import List, Optional
 from models.subject import Subject
 from models.task import Task
+from storage.file_storage import load_tasks, save_tasks  # for task lookup
 import json
 from pathlib import Path
 
@@ -9,9 +10,12 @@ DATA_FILE = Path("subjects.json")
 class SubjectService:
     """
     Handles logic for managing subjects/classes.
+    Stores only task titles; tasks are retrieved via TaskService.
     """
     def __init__(self):
         self.subjects: List[Subject] = self.load_subjects()
+
+    # ---------- Subject Management ----------
 
     def add_subject(self, subject: Subject):
         """Add a new subject."""
@@ -30,26 +34,49 @@ class SubjectService:
                 return subject
         return None
 
-    def assign_task_to_subject(self, subject_name: str, task: Task):
-        """Assign an existing task to a subject."""
-        subject = self.get_subject(subject_name)
-        if subject:
-            subject.add_task(task)
-            self.save_subjects()
-
     def list_subjects(self) -> List[Subject]:
         """Return all subjects."""
         return self.subjects
 
+    # ---------- Task Assignment ----------
+
+    def assign_task_to_subject(self, subject_name: str, task_title: str):
+        """Assign an existing task to a subject by title."""
+        subject = self.get_subject(subject_name)
+        if subject:
+            subject.add_task_title(task_title)
+            self.save_subjects()
+
+    def remove_task_from_subject(self, subject_name: str, task_title: str):
+        """Remove a task reference from a subject by title."""
+        subject = self.get_subject(subject_name)
+        if subject:
+            subject.remove_task_title(task_title)
+            self.save_subjects()
+
+    def list_tasks_for_subject(self, subject_name: str, all_tasks: List[Task]) -> List[Task]:
+        """
+        Return Task objects assigned to a subject.
+        all_tasks should come from TaskService.tasks
+        """
+        subject = self.get_subject(subject_name)
+        if not subject:
+            return []
+
+        # Match task titles to Task objects
+        return [t for t in all_tasks if t.title in subject.list_task_titles()]
+
+    # ---------- Persistence ----------
+
     def save_subjects(self):
-        """Persist subjects to JSON."""
+        """Persist subjects (with task titles only) to JSON."""
         data = []
         for s in self.subjects:
             data.append({
                 "name": s.name,
                 "teacher": s.teacher,
                 "color": s.color,
-                "tasks": [t.to_dict() for t in s.tasks]
+                "task_titles": s.list_task_titles()
             })
 
         with open(DATA_FILE, "w") as f:
@@ -70,8 +97,8 @@ class SubjectService:
                 teacher=item.get("teacher"),
                 color=item.get("color")
             )
-            for task_data in item.get("tasks", []):
-                subject.add_task(Task.from_dict(task_data))
+            for task_title in item.get("task_titles", []):
+                subject.add_task_title(task_title)
             subjects.append(subject)
 
         return subjects
